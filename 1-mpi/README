@@ -7,18 +7,19 @@ Uruchomienie przykładu (5 - liczba procesów MPI):
 mpiexec -np 5 ./mylockmain
 
 Metody klasy MyLock:
-MyLock* ml = new MyLock();
+MyLock<MyDataClass>* ml = new MyLock<MyDataClass>(obiekt typu MyDataClass);
 ml->acquire();
-ml->release();
-delete ml; // stops receiver-thread; calls ~MyLock()
+// sekcja krytyczna, zmiany na obiekcie ml->data
+ml->release(); // 
+delete ml; // zatrzymuje wątek nasłuchujący; wywołuje ~MyLock()
 
 ----------------------------------------------------------------------------------------------
 
 Do serializacji wykorzystano Cereal: http://uscilab.github.io/cereal/
-Tworzenie obiektów (struktur) przygotowanych do serializacji: 
+Tworzenie obiektów (klas) przygotowanych do serializacji: 
+Wystarczy dziedziczyć z ISerializableClass, dodać metodę serialize wraz z linią template... oraz podać wszystkie nazwy zmiennych z MyDataClass do metody archive.
 
-struct MyStruct
-{
+class MyDataClass: public ISerializableClass {
   int x, y, z;
 
   // This method lets cereal know which data members to serialize
@@ -28,5 +29,3 @@ struct MyStruct
     archive( x, y, z ); // serialize things by passing them to the archive
   }
 };
-
-Wystarczy dodać metodę serialize oraz podać wszystkie zmienne z MyClass do metody archive.
