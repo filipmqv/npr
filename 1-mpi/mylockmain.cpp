@@ -58,26 +58,27 @@ void stop(int signo) {
 
 void broadcastLoop() {
 
-    MyData* isc1 = new MyData();
-    isc1->a = 44;
-    isc1->b = 45;
-    isc1->c = "ala ma kota";
-    MyLock<MyData>* ml = new MyLock<MyData>(isc1);
+    MyData* md = new MyData();
+    md->a = 44;
+    md->b = 45;
+    md->c = "ala ma kota";
+    MyLock<MyData>* ml = new MyLock<MyData>(md);
+
     ml->acquire();
+
     printf("(%d) w sekcji krytycznej\n", rankMain);
     sleep(1);
     if (rankMain == 0)
         ml->data.a = 999;
-    if (rankMain == 3)
+    if (rankMain == 1)
         ml->data.c += ", a kot Alę";
     printf("(%d) po sekcji krytycznej\n", rankMain);
-
     
     ml->release();
     printf("(%d) po release %d, %d, %s\n", rankMain, ml->data.a, ml->data.b, ml->data.c.c_str());
     delete ml;
 
-    printf("(%d) brLoop finished\n", rankMain);
+    printf("(%d) broadcastLoop finished\n", rankMain);
 
 }
 
