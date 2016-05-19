@@ -1,0 +1,32 @@
+Przed kompilacją należy zmienić ścieżkę w pliku <myprof.conf> na ścieżkę prowadzącą aktualnie do tego katalogu (1-mpi). 
+
+Kompilacja (biblioteka MPICH):
+mpicxx mylockmain.cpp -std=c++11 -lpthread -o mylockmain -profile=myprof
+
+Uruchomienie przykładu (5 - liczba procesów MPI): 
+mpiexec -np 5 ./mylockmain
+
+Metody klasy MyLock:
+MyLock* ml = new MyLock();
+ml->acquire();
+ml->release();
+delete ml; // stops receiver-thread; calls ~MyLock()
+
+----------------------------------------------------------------------------------------------
+
+Do serializacji wykorzystano Cereal: http://uscilab.github.io/cereal/
+Tworzenie obiektów (struktur) przygotowanych do serializacji: 
+
+struct MyStruct
+{
+  int x, y, z;
+
+  // This method lets cereal know which data members to serialize
+  template<class Archive>
+  void serialize(Archive & archive)
+  {
+    archive( x, y, z ); // serialize things by passing them to the archive
+  }
+};
+
+Wystarczy dodać metodę serialize oraz podać wszystkie zmienne z MyClass do metody archive.
