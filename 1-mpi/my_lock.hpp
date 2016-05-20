@@ -15,12 +15,14 @@ private:
 	static void *myThreadReceiverHelper(void *context) {
         return ((MyLock *)context)->myThreadReceiver();
     }
+    void sendToPrinter(std::initializer_list<std::string> texts);
     void initThreadReceiver();
 	void stopThreadReceiver();
 	void broadcastLockAcquireRequest();
 	void handleMsgAcquireRequestReceived();
 	void handleMsgAcquireReplyReceived();
 	void handleMsgReleaseReceived(int dataSize);
+	void handleMsgPrintReceived(int dataSize);
 	void* myThreadReceiver(void);
 	void broadcastLockRelease();
 	//std::string serialize();

@@ -18,8 +18,11 @@
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/string.hpp>
 #include <sstream>
+#include <initializer_list> // for multiple args passed to function
 
 #include <my_lock.cpp>
+
+#define MSG_PRINT 103
 
 int worldSizeMain, rankMain;
 
@@ -55,6 +58,16 @@ void stop(int signo) {
     exit(EXIT_SUCCESS);
 }
 
+void sendToPrinterFromMain(std::initializer_list<std::string> texts) {
+    std::ostringstream stringStream;
+    stringStream << "{" << rankMain << "} " << std::chrono::system_clock::now().time_since_epoch().count() << " ";
+    for(auto i = texts.begin(); i != texts.end(); i++) {
+        stringStream << *i << " ";
+    }
+    stringStream << " ";
+    std::string copyOfStr = stringStream.str();
+    MPI_Send(copyOfStr.c_str(), copyOfStr.size(), MPI_CHAR, 0, MSG_PRINT, MPI_COMM_WORLD);
+}
 
 void broadcastLoop() {
 
@@ -66,16 +79,19 @@ void broadcastLoop() {
 
     ml->acquire();
 
-    printf("(%d) w sekcji krytycznej\n", rankMain);
-    sleep(1);
+    sendToPrinterFromMain( {"w sekcji krytycznej"} );
+    //sleep(1);
     if (rankMain == 0)
         ml->data.a = 999;
     if (rankMain == 1)
         ml->data.c += ", a kot Alę";
-    printf("(%d) po sekcji krytycznej\n", rankMain);
+    //printf("(%d) po sekcji krytycznej\n", rankMain);
+    sendToPrinterFromMain( {"po sekcji krytycznej"} );
+    
     
     ml->release();
-    printf("(%d) po release %d, %d, %s\n", rankMain, ml->data.a, ml->data.b, ml->data.c.c_str());
+    //printf("(%d) po release %d, %d, %s\n", rankMain, ml->data.a, ml->data.b, ml->data.c.c_str());
+    sendToPrinterFromMain({std::to_string(ml->data.a), std::to_string(ml->data.b), ml->data.c});
     delete ml;
 
     printf("(%d) broadcastLoop finished\n", rankMain);

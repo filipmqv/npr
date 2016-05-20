@@ -4,6 +4,7 @@
 #define MSG_ACQUIRE_REPLY 101
 #define MSG_RELEASE 102
 #define MSG_FINISH 666
+#define MSG_PRINT 103
 
 /*
 inicjator broadcastuje swój timestamp i rank
@@ -54,6 +55,18 @@ MyLock<T>::~MyLock() {
 }
 
 template <class T>
+void MyLock<T>::sendToPrinter(std::initializer_list<std::string> texts) {
+    std::ostringstream stringStream;
+    stringStream << "{" << rank << "} " << std::chrono::system_clock::now().time_since_epoch().count() << " ";
+    for(auto i = texts.begin(); i != texts.end(); i++) {
+        stringStream << *i << " ";
+    }
+    stringStream << " ";
+    std::string copyOfStr = stringStream.str();
+    MPI_Send(copyOfStr.c_str(), copyOfStr.size(), MPI_CHAR, 0, MSG_PRINT, MPI_COMM_WORLD);
+}
+
+template <class T>
 void MyLock<T>::broadcastLockAcquireRequest() {
     pthread_mutex_lock(&m);
     numOfAcquireReplys = 1; // one ack from myself
@@ -62,7 +75,8 @@ void MyLock<T>::broadcastLockAcquireRequest() {
     isRequesting = true;
     allowed = false;
     pthread_mutex_unlock(&m);
-    printf("(%d) tstmp %ld\n", rank, timestamp);
+    //printf("(%d) tstmp %ld\n", rank, timestamp);
+    sendToPrinter({"test", std::to_string(isRequesting)});
 
     for(int i = 0; i < worldSize; i++) {
         //printf("  (%d) Wysylam tmstmp %ld do %d\n", rank, timestamp, i);
@@ -142,6 +156,14 @@ void MyLock<T>::handleMsgReleaseReceived(int dataSize) {
 }
 
 template <class T>
+void MyLock<T>::handleMsgPrintReceived(int dataSize) {
+    char rcvdData[dataSize];
+    MPI_Recv(&rcvdData, dataSize, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    printf("%s\n", rcvdData);
+    //std::cout << rcvdData << std::endl;
+}
+
+template <class T>
 void* MyLock<T>::myThreadReceiver(void) {
 	bool running = true;
     while (running) {
@@ -159,9 +181,14 @@ void* MyLock<T>::myThreadReceiver(void) {
             	MPI_Get_count(&status, MPI_CHAR, &dataSize);
                 handleMsgReleaseReceived(dataSize);
             break;
+            case MSG_PRINT:
+                int dataSize2;
+                MPI_Get_count(&status, MPI_CHAR, &dataSize2);
+                handleMsgPrintReceived(dataSize2);
+            break;
             case MSG_FINISH:
-            	int dummy;
-            	MPI_Recv(&dummy, 1, MPI_INT, rank, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                int dummy;
+                MPI_Recv(&dummy, 1, MPI_INT, rank, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 running = false;
             break;
 
@@ -205,3 +232,4 @@ template <class T>
 void MyLock<T>::release() {
 	broadcastLockRelease();
 }
+
