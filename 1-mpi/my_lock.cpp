@@ -64,8 +64,7 @@ void MyLock<T>::broadcastLockAcquireRequest() {
     pthread_mutex_unlock(&m);
     printf("(%d) tstmp %ld\n", rank, timestamp);
 
-    int i;
-    for(i = 0; i < worldSize; i++) {
+    for(int i = 0; i < worldSize; i++) {
         //printf("  (%d) Wysylam tmstmp %ld do %d\n", rank, timestamp, i);
         MPI_Send(&timestamp, 1, MPI_LONG, i, MSG_ACQUIRE_REQUEST, MPI_COMM_WORLD);
     }
@@ -177,6 +176,7 @@ template <class T>
 void MyLock<T>::broadcastLockRelease() {
     pthread_mutex_lock(&m);
     isRequesting = false;
+    allowed = false;
     pthread_mutex_unlock(&m);
 
     // serialize data
@@ -185,8 +185,7 @@ void MyLock<T>::broadcastLockRelease() {
     oarchive(data); // Write the data to the archive
     std::string serializedData = ss.str();
 
-    int i;
-    for(i = 0; i < worldSize; i++) {
+    for(int i = 0; i < worldSize; i++) {
         //printf("  (%d) Wysylam release %ld do %d\n", rank, timestamp, i);
         MPI_Send(serializedData.c_str(), serializedData.size(), MPI_CHAR, i, MSG_RELEASE, MPI_COMM_WORLD);
     }
