@@ -7,25 +7,26 @@
 #define MSG_PRINT 103
 
 /*
-inicjator broadcastuje swój timestamp i rank
-odbierający odpowiada:
+inicjator broadcastuje swój timestamp i rank (request)
+odbierający odpowiada (reply):
     od razu zatwierdza, jeśli sam nie chce się ubiegać lub ma wyższy timestamp (późniejszy)
             (jeśli timestampy są równe to bierze się pod uwagę rank - niższy ma pierwszeństwo)
-    po zakończeniu własnej sekcji krytycznej zatwierdza
+    wpp po zakończeniu własnej sekcji krytycznej
 
 do sekcji można wejść po otrzymaniu wszystkich potwierdzeń
-po wyjściu z sekcji wysyła się zmiany, a sygnał release traktowany jest jako potwierdzenie
+po wyjściu z sekcji wysyła się zmiany (release) oraz opóźnione potwierdzenia (reply)
 */
 
 template <class T>
-MyLock<T>::MyLock(T* input) {
+MyLock<T>::MyLock(T input) {
 	static_assert(std::is_base_of<ISerializableClass, T>::value, "T must extend ISerializableClass");
 	MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
+    worldSize--; // last MPI process is only for printing
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	timestampGlobal = std::chrono::system_clock::now().time_since_epoch().count();
     isRequesting = false;
     allowed = false;
-    data = *input;
+    data = input;
 
     initThreadReceiver();
 }
@@ -57,26 +58,25 @@ MyLock<T>::~MyLock() {
 template <class T>
 void MyLock<T>::sendToPrinter(std::initializer_list<std::string> texts) {
     std::ostringstream stringStream;
-    stringStream << "{" << rank << "} " << std::chrono::system_clock::now().time_since_epoch().count() << " ";
+    stringStream << "{" << rank << "}\t" << std::chrono::system_clock::now().time_since_epoch().count() << "\t";
     for(auto i = texts.begin(); i != texts.end(); i++) {
-        stringStream << *i << " ";
+        stringStream << *i << "\t";
     }
     stringStream << " ";
     std::string copyOfStr = stringStream.str();
-    MPI_Send(copyOfStr.c_str(), copyOfStr.size(), MPI_CHAR, 0, MSG_PRINT, MPI_COMM_WORLD);
+    MPI_Send(copyOfStr.c_str(), copyOfStr.size(), MPI_CHAR, /*0*/ worldSize, MSG_PRINT, MPI_COMM_WORLD);
 }
 
 template <class T>
 void MyLock<T>::broadcastLockAcquireRequest() {
     pthread_mutex_lock(&m);
-    numOfAcquireReplys = 1; // one ack from myself
+    acquireReplysRanks.clear();
+    acquireReplysRanks.insert(rank); // one from myself
     timestampGlobal = std::chrono::system_clock::now().time_since_epoch().count();
     long timestamp = timestampGlobal;
     isRequesting = true;
     allowed = false;
     pthread_mutex_unlock(&m);
-    //printf("(%d) tstmp %ld\n", rank, timestamp);
-    sendToPrinter({"test", std::to_string(isRequesting)});
 
     for(int i = 0; i < worldSize; i++) {
         //printf("  (%d) Wysylam tmstmp %ld do %d\n", rank, timestamp, i);
@@ -98,12 +98,16 @@ void MyLock<T>::handleMsgAcquireRequestReceived() {
     pthread_mutex_lock(&m);
     long myTimestamp = timestampGlobal;
     bool amIRequestingNow = isRequesting;
-    pthread_mutex_unlock(&m);
 
-    if (!amIRequestingNow || rcvdTimestamp < myTimestamp || 
-                (rcvdTimestamp == myTimestamp && status.MPI_SOURCE < rank)) {
+    if ( !amIRequestingNow || rcvdTimestamp < myTimestamp || 
+                (rcvdTimestamp == myTimestamp && status.MPI_SOURCE < rank) ) {
+        pthread_mutex_unlock(&m);
         MPI_Send(&rcvdTimestamp, 1, MPI_LONG, status.MPI_SOURCE, MSG_ACQUIRE_REPLY, MPI_COMM_WORLD);
-    } // else don't send reply
+    } else {
+        delayedReplys.push_back(status.MPI_SOURCE);
+        delayedReplysTimestamps.push_back(rcvdTimestamp);
+        pthread_mutex_unlock(&m);
+    }
 }
 
 template <class T>
@@ -115,9 +119,8 @@ void MyLock<T>::handleMsgAcquireReplyReceived() {
 
     pthread_mutex_lock(&m);
     if (isRequesting && timestampGlobal == rcvdTimestamp) {
-        numOfAcquireReplys++;
-        if (numOfAcquireReplys == worldSize) {
-            //printf("(%d) signal\n", rank);
+        acquireReplysRanks.insert(status.MPI_SOURCE);
+        if (acquireReplysRanks.size() == worldSize) {
             allowed = true;
             pthread_cond_signal(&allResponses);
         }
@@ -130,36 +133,29 @@ void MyLock<T>::handleMsgReleaseReceived(int dataSize) {
     MPI_Status status;
     char rcvdData[dataSize];
     MPI_Recv(&rcvdData, dataSize, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-    //printf("(%d) MSG_RELEASE %ld from %d\n", rank, rcvdTimestamp, status.MPI_SOURCE);
 
 	if (status.MPI_SOURCE == rank) {
         return;
     }
 
+    // deserialize and save obtained data (if it's newer than owned data)
+    pthread_mutex_lock(&dataLock);
     std::stringstream ss;
     ss << std::string(rcvdData, dataSize);
     cereal::BinaryInputArchive iarchive(ss); // Create an input archive
     T rcvdDataDeserialized;
     iarchive(rcvdDataDeserialized); // Read the data from the archive
 
-    data = rcvdDataDeserialized;
-
-    pthread_mutex_lock(&m);
-    if (isRequesting) {
-        numOfAcquireReplys++;
-        if (numOfAcquireReplys == worldSize) {
-            allowed = true;
-            pthread_cond_signal(&allResponses);
-        }
+    if (data.dataTmstmp < rcvdDataDeserialized.dataTmstmp) {
+        data = rcvdDataDeserialized;
     }
-    pthread_mutex_unlock(&m);
+    pthread_mutex_unlock(&dataLock);
 }
 
 template <class T>
 void MyLock<T>::handleMsgPrintReceived(int dataSize) {
     char rcvdData[dataSize];
     MPI_Recv(&rcvdData, dataSize, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    //printf("%s\n", rcvdData);
     rcvdData[dataSize-1] = '\0';
     std::cout << rcvdData << std::endl;
 }
@@ -205,18 +201,27 @@ void MyLock<T>::broadcastLockRelease() {
     pthread_mutex_lock(&m);
     isRequesting = false;
     allowed = false;
-    pthread_mutex_unlock(&m);
 
     // serialize data
+    data.dataTmstmp = std::chrono::system_clock::now().time_since_epoch().count();
     std::stringstream ss; // any stream can be used
     cereal::BinaryOutputArchive oarchive(ss); // Create an output archive
     oarchive(data); // Write the data to the archive
     std::string serializedData = ss.str();
+    sendToPrinter({std::to_string(data.a), std::to_string(data.dataTmstmp), data.c});
 
     for(int i = 0; i < worldSize; i++) {
         //printf("  (%d) Wysylam release %ld do %d\n", rank, timestamp, i);
         MPI_Send(serializedData.c_str(), serializedData.size(), MPI_CHAR, i, MSG_RELEASE, MPI_COMM_WORLD);
     }
+    //sleep(1);
+    for(int i = 0; i < delayedReplys.size(); i++) {
+        //printf("(%d) delayed ack sent to %d\n", rank, delayedReplys[i]);
+        MPI_Send(&delayedReplysTimestamps[i], 1, MPI_LONG, delayedReplys[i], MSG_ACQUIRE_REPLY, MPI_COMM_WORLD);
+    }
+    delayedReplys.clear();
+    delayedReplysTimestamps.clear();
+    pthread_mutex_unlock(&m);
 }
 
 template <class T>
@@ -227,10 +232,20 @@ void MyLock<T>::acquire() {
     	pthread_cond_wait(&allResponses, &m);
     }
     pthread_mutex_unlock(&m);
+
+    pthread_mutex_lock(&dataLock); // unlocked after release ****
 }
 
 template <class T>
 void MyLock<T>::release() {
 	broadcastLockRelease();
+    pthread_mutex_unlock(&dataLock); // locked after acquire ****
 }
 
+template <class T>
+T* MyLock<T>::getData() {
+    pthread_mutex_lock(&dataLock);
+    T* res = &data;
+    pthread_mutex_unlock(&dataLock);
+    return res;
+}

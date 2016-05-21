@@ -1,5 +1,7 @@
 #include <serializable_class.cpp>
 #include <type_traits>
+#include <vector>
+#include <set>
 
 template<class T>
 class MyLock {
@@ -7,8 +9,10 @@ private:
 	int worldSize, rank;
 	long timestampGlobal;
 	bool isRequesting, allowed; //allowed - set before signal in case signal goes before wait
-	int numOfAcquireReplys;
-	pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+	std::set<int> acquireReplysRanks; // collect unique ranks which replied
+	std::vector<int> delayedReplys; // for replys that should be sent after critical section
+	std::vector<long> delayedReplysTimestamps;
+	pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER, dataLock = PTHREAD_MUTEX_INITIALIZER;
 	pthread_cond_t allResponses = PTHREAD_COND_INITIALIZER;
 	pthread_t thread;
 
@@ -25,12 +29,11 @@ private:
 	void handleMsgPrintReceived(int dataSize);
 	void* myThreadReceiver(void);
 	void broadcastLockRelease();
-	//std::string serialize();
-	//struct deserialize();
 public:
 	T data;
-	MyLock(T* input);
+	MyLock(T input);
 	virtual ~MyLock();
 	void acquire();
 	void release();
+	T* getData();
 };

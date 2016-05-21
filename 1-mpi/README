@@ -3,21 +3,21 @@ Przed kompilacją należy zmienić ścieżkę w pliku <myprof.conf> na ścieżk�
 Kompilacja (biblioteka MPICH):
 mpicxx mylockmain.cpp -std=c++11 -lpthread -o mylockmain -profile=myprof
 
-Uruchomienie przykładu (5 - liczba procesów MPI): 
+Uruchomienie przykładu (5 - liczba procesów MPI, z czego ostatni proces {4} służy tylko do wypisywania na ekran): 
 mpiexec -np 5 ./mylockmain
 
 Metody klasy MyLock:
 MyLock<MyDataClass>* ml = new MyLock<MyDataClass>(obiekt typu MyDataClass);
-ml->acquire();
-// sekcja krytyczna, zmiany na obiekcie ml->data
-ml->release(); // 
+ml->acquire(); // zajęcie sekcji krytycznej
+// sekcja krytyczna, zmiany bezpośrednio na obiekcie ml->data.ZMIENNE
+ml->release(); // wyjście z sekcji krytycznej, rozpropagowanie ml->data
 delete ml; // zatrzymuje wątek nasłuchujący; wywołuje ~MyLock()
 
 ----------------------------------------------------------------------------------------------
 
 Do serializacji wykorzystano Cereal: http://uscilab.github.io/cereal/
 Tworzenie obiektów (klas) przygotowanych do serializacji: 
-Wystarczy dziedziczyć z ISerializableClass, dodać metodę serialize wraz z linią template... oraz podać wszystkie nazwy zmiennych z MyDataClass do metody archive.
+Wystarczy dziedziczyć z ISerializableClass, dodać metodę serialize() wraz z poprzedzającą ją linią template... oraz podać wszystkie nazwy zmiennych z MyDataClass do metody archive(). W metodzie archive() koniecznie musi znaleźć się też zmienna dataTmstmp!
 
 class MyDataClass: public ISerializableClass {
   int x, y, z;
@@ -26,6 +26,6 @@ class MyDataClass: public ISerializableClass {
   template<class Archive>
   void serialize(Archive & archive)
   {
-    archive( x, y, z ); // serialize things by passing them to the archive
+    archive( dataTmstmp, x, y, z ); // serialize things by passing them to the archive
   }
 };

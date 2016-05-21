@@ -4,15 +4,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <mpi.h>
-//#include <math.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include <chrono> // time
 #include <unistd.h>
-//#include <string.h>
 #include <signal.h>
-#include <stddef.h> // offsetof
-
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/types/memory.hpp>
 #include <cereal/archives/binary.hpp>
@@ -34,7 +30,7 @@ public:
     template <class Archive>
     void serialize( Archive & ar )
     {
-      ar( a, b, c );
+      ar( dataTmstmp, a, b, c );
     }
 };
 
@@ -42,6 +38,7 @@ void initMPI(int argc, char **argv) {
     int provided; 
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided); 
     MPI_Comm_size(MPI_COMM_WORLD, &worldSizeMain);
+    worldSizeMain--; // last MPI process is only for printing
     MPI_Comm_rank(MPI_COMM_WORLD, &rankMain);
 }
 
@@ -60,42 +57,36 @@ void stop(int signo) {
 
 void sendToPrinterFromMain(std::initializer_list<std::string> texts) {
     std::ostringstream stringStream;
-    stringStream << "{" << rankMain << "} " << std::chrono::system_clock::now().time_since_epoch().count() << " ";
+    stringStream << "{" << rankMain << "}\t" << std::chrono::system_clock::now().time_since_epoch().count() << "\t";
     for(auto i = texts.begin(); i != texts.end(); i++) {
-        stringStream << *i << " ";
+        stringStream << *i << "\t";
     }
     stringStream << " ";
     std::string copyOfStr = stringStream.str();
-    MPI_Send(copyOfStr.c_str(), copyOfStr.size(), MPI_CHAR, 0, MSG_PRINT, MPI_COMM_WORLD);
+    MPI_Send(copyOfStr.c_str(), copyOfStr.size(), MPI_CHAR, /*0*/ worldSizeMain, MSG_PRINT, MPI_COMM_WORLD);
 }
 
 void broadcastLoop() {
 
-    MyData* md = new MyData();
-    md->a = 44;
-    md->b = 45;
-    md->c = "ala ma kota";
+    MyData md;
+    md.a = 0;
+    md.b = 45;
+    md.c = "";
     MyLock<MyData>* ml = new MyLock<MyData>(md);
 
     ml->acquire();
-
-    sendToPrinterFromMain( {"w sekcji krytycznej"} );
-    //sleep(1);
-    if (rankMain == 0)
-        ml->data.a = 999;
-    if (rankMain == 1)
-        ml->data.c += ", a kot Alę";
-    //printf("(%d) po sekcji krytycznej\n", rankMain);
-    sendToPrinterFromMain( {"po sekcji krytycznej"} );
-    
-    
+    ml->data.a += rankMain;
+    ml->data.c += std::to_string(rankMain) + " ";
     ml->release();
-    //printf("(%d) po release %d, %d, %s\n", rankMain, ml->data.a, ml->data.b, ml->data.c.c_str());
-    sendToPrinterFromMain({std::to_string(ml->data.a), std::to_string(ml->data.b), ml->data.c});
+    
     delete ml;
+}
 
-    printf("(%d) broadcastLoop finished\n", rankMain);
-
+void printerLoop() {
+    MyData fake; 
+    MyLock<MyData>* ml = new MyLock<MyData>(fake);
+    printf("printer %d\n", rankMain);
+    delete ml; // wait here on barier for other MPI processes and only print msgs
 }
 
 int main(int argc, char **argv) {
@@ -104,8 +95,16 @@ int main(int argc, char **argv) {
 
     initMPI(argc, argv);
     
-    broadcastLoop();
+//////////////////////////////////// insert your code here: ///////////////////////////////
 
+    if (rankMain == worldSizeMain) 
+        printerLoop();
+    else {
+
+        broadcastLoop();
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////
     finishMPI();
     return 0;
 }
