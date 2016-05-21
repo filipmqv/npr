@@ -159,8 +159,9 @@ template <class T>
 void MyLock<T>::handleMsgPrintReceived(int dataSize) {
     char rcvdData[dataSize];
     MPI_Recv(&rcvdData, dataSize, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    printf("%s\n", rcvdData);
-    //std::cout << rcvdData << std::endl;
+    //printf("%s\n", rcvdData);
+    rcvdData[dataSize-1] = '\0';
+    std::cout << rcvdData << std::endl;
 }
 
 template <class T>
