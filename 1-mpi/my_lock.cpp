@@ -3,8 +3,9 @@
 #define MSG_ACQUIRE_REQUEST 100
 #define MSG_ACQUIRE_REPLY 101
 #define MSG_RELEASE 102
-#define MSG_FINISH 666
 #define MSG_PRINT 103
+#define MSG_SIGNAL 104
+#define MSG_FINISH 666
 
 /*
 inicjator broadcastuje swój timestamp i rank (request)
@@ -27,6 +28,8 @@ MyLock<T>::MyLock(T input) {
     isRequesting = false;
     allowed = false;
     data = input;
+    for(int i = 0; i < NUM_OF_COND_VARS; i++)
+        waitSignal[i] = PTHREAD_COND_INITIALIZER;
 
     initThreadReceiver();
 }
@@ -52,17 +55,17 @@ template <class T>
 MyLock<T>::~MyLock() {
 	stopThreadReceiver();
 	pthread_mutex_destroy(&m);
+    pthread_mutex_destroy(&dataLock);
     pthread_cond_destroy(&allResponses);	
+    for(int i = 0; i < NUM_OF_COND_VARS; i++)
+        pthread_cond_destroy(&waitSignal[i]);
 }
 
 template <class T>
-void MyLock<T>::sendToPrinter(std::initializer_list<std::string> texts) {
+void MyLock<T>::sendToPrinter(std::string texts) {
     std::ostringstream stringStream;
     stringStream << "{" << rank << "}\t" << std::chrono::system_clock::now().time_since_epoch().count() << "\t";
-    for(auto i = texts.begin(); i != texts.end(); i++) {
-        stringStream << *i << "\t";
-    }
-    stringStream << " ";
+    stringStream << texts << " ";
     std::string copyOfStr = stringStream.str();
     MPI_Send(copyOfStr.c_str(), copyOfStr.size(), MPI_CHAR, /*0*/ worldSize, MSG_PRINT, MPI_COMM_WORLD);
 }
@@ -161,6 +164,15 @@ void MyLock<T>::handleMsgPrintReceived(int dataSize) {
 }
 
 template <class T>
+void MyLock<T>::handleMsgSignalReceived() {
+    MPI_Status status;
+    int rcvdId;
+    MPI_Recv(&rcvdId, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+    signalCame = true;
+    pthread_cond_signal(&waitSignal[rcvdId]);
+}
+
+template <class T>
 void* MyLock<T>::myThreadReceiver(void) {
 	bool running = true;
     while (running) {
@@ -182,6 +194,9 @@ void* MyLock<T>::myThreadReceiver(void) {
                 int dataSize2;
                 MPI_Get_count(&status, MPI_CHAR, &dataSize2);
                 handleMsgPrintReceived(dataSize2);
+            break;
+            case MSG_SIGNAL:
+                handleMsgSignalReceived();
             break;
             case MSG_FINISH:
                 int dummy;
@@ -208,7 +223,7 @@ void MyLock<T>::broadcastLockRelease() {
     cereal::BinaryOutputArchive oarchive(ss); // Create an output archive
     oarchive(data); // Write the data to the archive
     std::string serializedData = ss.str();
-    sendToPrinter({std::to_string(data.a), std::to_string(data.dataTmstmp), data.c});
+    sendToPrinter("   release\t" + std::to_string(data.bufSingle) + " " + std::to_string(data.bufUsage) + "\t" + std::to_string(data.dataTmstmp) );
 
     for(int i = 0; i < worldSize; i++) {
         //printf("  (%d) Wysylam release %ld do %d\n", rank, timestamp, i);
@@ -248,4 +263,34 @@ T* MyLock<T>::getData() {
     T* res = &data;
     pthread_mutex_unlock(&dataLock);
     return res;
+}
+
+/////////////////////////// wait and signal ///////////////
+template <class T>
+void MyLock<T>::wait(int id) {
+    if(id < 0 || id > NUM_OF_COND_VARS-1) 
+        return;
+    //pthread_mutex_lock(&m);
+    //signalCame = false;
+    //pthread_mutex_unlock(&m);
+    sendToPrinter("before release");
+    release();
+    pthread_mutex_lock(&m);
+    if(!signalCame) { // if allowed == true -- signal was sent before waiting for it
+        sendToPrinter("waiting");
+        pthread_cond_wait(&waitSignal[id], &m);
+    }
+    signalCame = false;
+    sendToPrinter("awaken");
+    pthread_mutex_unlock(&m);
+    acquire();
+}
+
+template <class T>
+void MyLock<T>::signal(int id) {
+    if(id < 0 || id > NUM_OF_COND_VARS-1) 
+        return;
+    for(int i = 0; i < worldSize; i++) {
+        MPI_Send(&id, 1, MPI_INT, i, MSG_SIGNAL, MPI_COMM_WORLD);
+    }
 }

@@ -8,10 +8,12 @@ mpiexec -np 5 ./mylockmain
 
 Metody klasy MyLock:
 MyLock<MyDataClass>* ml = new MyLock<MyDataClass>(obiekt typu MyDataClass);
-ml->acquire(); // zajęcie sekcji krytycznej
-// sekcja krytyczna, zmiany bezpośrednio na obiekcie ml->data.ZMIENNE
-ml->release(); // wyjście z sekcji krytycznej, rozpropagowanie ml->data
-delete ml; // zatrzymuje wątek nasłuchujący; wywołuje ~MyLock()
+ml->acquire(); 		// zajęcie sekcji krytycznej
+ml->wait(int id) 	// id z zakresu <0;9> - charakteryzuje konkretną zmienną warunkową
+**					// sekcja krytyczna, zmiany bezpośrednio na obiekcie ml->data.ZMIENNE
+ml->release(); 		// wyjście z sekcji krytycznej, rozpropagowanie ml->data
+ml->signal(int id) 	// wywołać po release
+delete ml; 			// zatrzymuje wątek nasłuchujący; wywołuje ~MyLock()
 
 ----------------------------------------------------------------------------------------------
 
