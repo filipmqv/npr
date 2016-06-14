@@ -20,16 +20,31 @@ int _my_open(CLIENT* clnt, char* p, my_access ma) {
 		clnt_perror (clnt, "open call failed");
 	} else if (result_1->status == -1) {
 		errno = result_1->my_open_creat_results_u.my_errno;
-		perror("--custom open error--");
+		perror("--SERVER open error");
 	} else {
-		printf("OPEN DONE, fd = %d\n", result_1->my_open_creat_results_u.fd);
+		printf("OPEN DONE, %s -> fd = %d\n", p, result_1->my_open_creat_results_u.fd);
 		return result_1->my_open_creat_results_u.fd;
 	}
 	return -1;
 }
 
-int _my_creat(CLIENT* clnt) {
+int _my_creat(CLIENT* clnt, char* p) {
+	my_open_creat_results  *result_2;
+	my_creat_params  my_creat_1_arg;
 
+	my_creat_1_arg.path = p;
+
+	result_2 = my_creat_1(&my_creat_1_arg, clnt);
+	if (result_2 == (my_open_creat_results *) NULL) {
+		clnt_perror (clnt, "creat call failed");
+	} else if (result_2->status == -1) {
+		errno = result_2->my_open_creat_results_u.my_errno;
+		perror("--SERVER creat error--");
+	} else {
+		printf("CREAT DONE, %s -> fd = %d\n", p, result_2->my_open_creat_results_u.fd);
+		return result_2->my_open_creat_results_u.fd;
+	}
+	return -1;
 }
 
 int _my_read(CLIENT* clnt, int f, int c) {
@@ -44,9 +59,9 @@ int _my_read(CLIENT* clnt, int f, int c) {
 		clnt_perror (clnt, "read call failed");
 	} else if (result_3->status == -1) {
 		errno = result_3->my_read_results_u.my_errno;
-		perror("--custom read error--");
+		perror("--SERVER read error");
 	} else {
-		printf("READ DONE: %s\n", result_3->my_read_results_u.buf);
+		printf("(fd %d) READ DONE: %s\n", f, result_3->my_read_results_u.buf);
 		return 0;
 	}
 	return -1;
@@ -64,9 +79,9 @@ int _my_write(CLIENT* clnt, int f, char* b) {
 		clnt_perror (clnt, "write call failed");
 	} else if (result_4->status == -1) {
 		errno = result_4->my_write_results_u.my_errno;
-		perror("--custom write error--");
+		perror("--SERVER write error");
 	} else {
-		printf("WRITE DONE, %d B\n", result_4->my_write_results_u.bytes_written);
+		printf("(fd %d) WRITE DONE, %s (%dB)\n", f, b, result_4->my_write_results_u.bytes_written);
 		return 0;
 	}
 	return -1;
@@ -84,9 +99,9 @@ int _my_lseek(CLIENT* clnt, int f, int o, my_whence mw) {
 		clnt_perror (clnt, "lseek call failed");
 	} else if (result_5->status == -1) {
 		errno = result_5->my_lseek_results_u.my_errno;
-		perror("--custom lseek error--");
+		perror("--SERVER lseek error");
 	} else {
-		printf("LSEEK DONE, current location: %d\n", result_5->my_lseek_results_u.offset_location);
+		printf("(fd %d) LSEEK DONE, current location: %d\n", f, result_5->my_lseek_results_u.offset_location);
 		return result_5->my_lseek_results_u.offset_location;
 	}
 	return -1;
@@ -102,9 +117,9 @@ int _my_close(CLIENT* clnt, int f) {
 		clnt_perror (clnt, "close call failed");
 	} else if (result_6->status == -1) {
 		errno = result_6->my_close_results_u.my_errno;
-		perror("--custom close error--");
+		perror("--SERVER close error");
 	} else {
-		printf("CLOSE DONE\n");
+		printf("(fd %d) CLOSE DONE\n", f);
 		return 0;
 	}
 	return -1;
@@ -114,13 +129,6 @@ void
 my_nfs_1(char *host)
 {
 	CLIENT *clnt;
-	
-	my_open_creat_results  *result_2;
-	my_creat_params  my_creat_1_arg;
-	
-	
-	
-	
 
 #ifndef	DEBUG
 	clnt = clnt_create (host, MY_NFS, MY_NFS_V1, "udp");
@@ -130,36 +138,24 @@ my_nfs_1(char *host)
 	}
 #endif	/* DEBUG */
 
-int fddd;
 	
-	fddd = _my_open(clnt, "test2.txt", _O_RDWR);
+	int mo = _my_open(clnt, "test2.txt", _O_RDWR);
 
-	my_creat_1_arg.path = "test3.txt";
-	result_2 = my_creat_1(&my_creat_1_arg, clnt);
-	if (result_2 == (my_open_creat_results *) NULL) {
-		clnt_perror (clnt, "creat call failed");
-	} else if (result_2->status == -1) {
-		errno = result_2->my_open_creat_results_u.my_errno;
-		perror("--custom creat error--");
-	} else {
-		printf("fd = %d\n", result_2->my_open_creat_results_u.fd);
-	}
+	int mcr = _my_creat(clnt, "test3.txt");
 
 
-	int mr = _my_read(clnt, fddd, 25);
+	int mr = _my_read(clnt, mo, 25);
 
 
-	int mw = _my_write(clnt, fddd, "qwe+");
+	int mw = _my_write(clnt, mo, "qwe+");
 
-	int ml = _my_lseek(clnt, fddd, 2, _SEEK_SET);
+	int ml = _my_lseek(clnt, mo, 2, _SEEK_SET);
 
-	int mr2 = _my_read(clnt, fddd, 3);
+	int mr2 = _my_read(clnt, mo, 3);
 
-	int mc = _my_close(clnt, fddd);
+	int mcl = _my_close(clnt, mo);
+	int mcl2 = _my_close(clnt, mcr);
 	
-
-	
-
 
 #ifndef	DEBUG
 	clnt_destroy (clnt);

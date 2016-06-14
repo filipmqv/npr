@@ -48,6 +48,13 @@ my_creat_1_svc(my_creat_params *argp, struct svc_req *rqstp)
 
 	printf("creat %s\n", argp->path);
 
+	result.status = creat(argp->path, S_IRWXU);
+	if (result.status == -1) {
+		result.my_open_creat_results_u.my_errno = errno;
+	} else {
+		result.my_open_creat_results_u.fd = result.status;
+	}
+
 	return &result;
 }
 
@@ -74,11 +81,12 @@ my_write_1_svc(my_write_params *argp, struct svc_req *rqstp)
 {
 	static my_write_results  result;
 
-	printf("write %s\n", argp->buf);
-	result.my_write_results_u.bytes_written = write(argp->fd, argp->buf, argp->buf_size);
-	if (result.my_write_results_u.bytes_written == -1) {
-		result.status = -1;
+	printf("write %d %s\n", argp->fd, argp->buf);
+	result.status = write(argp->fd, argp->buf, argp->buf_size);
+	if (result.status == -1) {
 		result.my_write_results_u.my_errno = errno;
+	} else {
+		result.my_write_results_u.bytes_written = result.status;
 	}
 
 	return &result;
@@ -89,7 +97,7 @@ my_lseek_1_svc(my_lseek_params *argp, struct svc_req *rqstp)
 {
 	static my_lseek_results  result;
 
-	printf("lseek\n");
+	printf("lseek %d\n", argp->fd);
 	int wh;
 	switch (argp->my_whence_flag) {
 		case _SEEK_SET: wh = SEEK_SET;
@@ -108,6 +116,7 @@ my_lseek_1_svc(my_lseek_params *argp, struct svc_req *rqstp)
 	} else {
 		result.my_lseek_results_u.offset_location = result.status;
 	}
+
 	return &result;
 }
 
@@ -116,9 +125,9 @@ my_close_1_svc(my_close_params *argp, struct svc_req *rqstp)
 {
 	static my_close_results  result;
 
-	printf("close\n");
+	printf("close %d\n", argp->fd);
 	result.status = close(argp->fd);
-	if (result.status != -1) {
+	if (result.status == -1) {
 		result.my_close_results_u.my_errno = errno;
 	} else {
 		result.my_close_results_u.success = 0;
