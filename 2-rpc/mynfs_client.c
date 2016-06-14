@@ -66,6 +66,7 @@ int _my_read(CLIENT* clnt, int f, int c) {
 	}
 	return -1;
 }
+
 int _my_write(CLIENT* clnt, int f, char* b) {
 	my_write_results  *result_4;
 	my_write_params  my_write_1_arg;
@@ -86,6 +87,7 @@ int _my_write(CLIENT* clnt, int f, char* b) {
 	}
 	return -1;
 }
+
 int _my_lseek(CLIENT* clnt, int f, int o, my_whence mw) {
 	my_lseek_results  *result_5;
 	my_lseek_params  my_lseek_1_arg;
@@ -106,6 +108,7 @@ int _my_lseek(CLIENT* clnt, int f, int o, my_whence mw) {
 	}
 	return -1;
 }
+
 int _my_close(CLIENT* clnt, int f) {
 	my_close_results  *result_6;
 	my_close_params  my_close_1_arg;
@@ -125,47 +128,43 @@ int _my_close(CLIENT* clnt, int f) {
 	return -1;
 }
 
-void
-my_nfs_1(char *host)
-{
-	CLIENT *clnt;
+CLIENT* get_client_from_host(char *host) {
+	CLIENT *c;
 
-#ifndef	DEBUG
-	clnt = clnt_create (host, MY_NFS, MY_NFS_V1, "udp");
-	if (clnt == NULL) {
+	#ifndef	DEBUG
+	c = clnt_create (host, MY_NFS, MY_NFS_V1, "udp");
+	if (c == NULL) {
 		clnt_pcreateerror (host);
 		exit (1);
 	}
-#endif	/* DEBUG */
+	#endif	/* DEBUG */
+	return c;
 
-	
+}
+
+void destroy_client(CLIENT *c) {
+	#ifndef	DEBUG
+	clnt_destroy (c);
+	#endif	 /* DEBUG */
+}
+
+void my_nfs_1(char *host) {
+	CLIENT *clnt = get_client_from_host(host);
+
 	int mo = _my_open(clnt, "test2.txt", _O_RDWR);
-
 	int mcr = _my_creat(clnt, "test3.txt");
-
-
 	int mr = _my_read(clnt, mo, 25);
-
-
 	int mw = _my_write(clnt, mo, "qwe+");
-
 	int ml = _my_lseek(clnt, mo, 2, _SEEK_SET);
-
 	int mr2 = _my_read(clnt, mo, 3);
-
 	int mcl = _my_close(clnt, mo);
 	int mcl2 = _my_close(clnt, mcr);
-	
 
-#ifndef	DEBUG
-	clnt_destroy (clnt);
-#endif	 /* DEBUG */
+	destroy_client(clnt);
 }
 
 
-int
-main (int argc, char *argv[])
-{
+int main (int argc, char *argv[]) {
 	char *host;
 
 	if (argc < 2) {
@@ -173,6 +172,40 @@ main (int argc, char *argv[])
 		exit (1);
 	}
 	host = argv[1];
-	my_nfs_1 (host);
-exit (0);
+	if (argc == 2) {
+		// demo
+		my_nfs_1 (host);
+	} else {
+		CLIENT* clnt = get_client_from_host(host);
+		if (strcmp(argv[2], "open") == 0) {
+			my_access maf = _O_RDWR;
+			if (strcmp(argv[4], "_O_RDONLY") == 0) maf = _O_RDONLY;
+			if (strcmp(argv[4], "O_WRONLY") == 0) maf = _O_WRONLY;
+			_my_open(clnt, argv[3], maf);
+		}
+		else if (strcmp(argv[2], "creat") == 0) {
+			_my_creat(clnt, argv[3]);
+		}
+		else if (strcmp(argv[2], "read") == 0) {
+			_my_read(clnt, atoi(argv[3]), atoi(argv[4]));
+		}
+		else if (strcmp(argv[2], "write") == 0) {
+			_my_write(clnt, atoi(argv[3]), argv[4]);
+		}
+		else if (strcmp(argv[2], "lseek") == 0) {
+			my_whence mw = _SEEK_SET;
+			if (strcmp(argv[4], "SEEK_CUR") == 0) mw = _SEEK_CUR;
+			if (strcmp(argv[4], "SEEK_END") == 0) mw = _SEEK_END;
+			_my_lseek(clnt, atoi(argv[3]), atoi(argv[4]), mw);
+		}
+		else if (strcmp(argv[2], "close") == 0) {
+			_my_close(clnt, atoi(argv[3]));
+		}
+		else {
+			printf("bad command\n");
+		}
+		destroy_client(clnt);
+	}
+
+	exit (0);
 }
