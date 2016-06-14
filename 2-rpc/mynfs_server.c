@@ -7,6 +7,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+
+#include <stdio.h>
+#include <unistd.h>
+
 #include "mynfs.h"
 
 my_open_creat_results *
@@ -16,26 +20,22 @@ my_open_1_svc(my_open_params *argp, struct svc_req *rqstp)
 
 	printf("open %s\n", argp->path);
 
-	int res;
+	int ac;
 	switch (argp->my_access_flag) {
-		case _O_RDONLY:
-			res = open(argp->path, O_RDONLY);
+		case _O_RDONLY: ac = O_RDONLY;
 			break;
-		case _O_WRONLY:
-			res = open(argp->path, O_WRONLY);
+		case _O_WRONLY: ac = O_WRONLY;
 			break;
-		case _O_RDWR:
-			res = open(argp->path, O_RDWR);
+		case _O_RDWR: ac = O_RDWR;
 			break;
-		default:
-			res = -1;
+		default: ac = O_RDONLY;
 			break;
 	}
-	result.status = res;
-	if (res != -1) {
-		result.my_open_creat_results_u.fd = res;
-	} else {
+	result.status = open(argp->path, ac);
+	if (result.status == -1) {
 		result.my_open_creat_results_u.my_errno = errno;
+	} else {
+		result.my_open_creat_results_u.fd = result.status;
 	}
 
 	return &result;
@@ -56,11 +56,15 @@ my_read_1_svc(my_read_params *argp, struct svc_req *rqstp)
 {
 	static my_read_results  result;
 
-	printf("read\n");
-	//result.status = 1;
-	//result.my_read_results_u.buf = "readable";
-	result.status = -1;
-	result.my_read_results_u.my_errno = EINVAL;
+	printf("read %d count %d\n", argp->fd, argp->count);
+
+	result.my_read_results_u.buf = (char *)malloc(argp->count);
+	result.status = read(argp->fd, result.my_read_results_u.buf, argp->count);
+	if (result.status == -1) {
+		result.my_read_results_u.my_errno = errno;
+	} else {
+		result.my_read_results_u.buf[result.status] = '\0';
+	}
 
 	return &result;
 }
@@ -71,6 +75,11 @@ my_write_1_svc(my_write_params *argp, struct svc_req *rqstp)
 	static my_write_results  result;
 
 	printf("write %s\n", argp->buf);
+	result.my_write_results_u.bytes_written = write(argp->fd, argp->buf, argp->buf_size);
+	if (result.my_write_results_u.bytes_written == -1) {
+		result.status = -1;
+		result.my_write_results_u.my_errno = errno;
+	}
 
 	return &result;
 }
@@ -81,7 +90,24 @@ my_lseek_1_svc(my_lseek_params *argp, struct svc_req *rqstp)
 	static my_lseek_results  result;
 
 	printf("lseek\n");
+	int wh;
+	switch (argp->my_whence_flag) {
+		case _SEEK_SET: wh = SEEK_SET;
+			break;
+		case _SEEK_CUR: wh = SEEK_CUR;
+			break;
+		case _SEEK_END: wh = SEEK_END;
+			break;
+		default: wh = SEEK_SET;
+			break;
+	}
 
+	result.status = (int) lseek(argp->fd, argp->offset, wh);
+	if (result.status == -1) {
+		result.my_lseek_results_u.my_errno = errno;
+	} else {
+		result.my_lseek_results_u.offset_location = result.status;
+	}
 	return &result;
 }
 
@@ -91,6 +117,12 @@ my_close_1_svc(my_close_params *argp, struct svc_req *rqstp)
 	static my_close_results  result;
 
 	printf("close\n");
+	result.status = close(argp->fd);
+	if (result.status != -1) {
+		result.my_close_results_u.my_errno = errno;
+	} else {
+		result.my_close_results_u.success = 0;
+	}
 
 	return &result;
 }

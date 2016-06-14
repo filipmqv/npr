@@ -8,22 +8,119 @@
 #include "mynfs.h"
 
 
+int _my_open(CLIENT* clnt, char* p, my_access ma) {
+	my_open_creat_results  *result_1;
+	my_open_params  my_open_1_arg;
+
+	my_open_1_arg.path = p;
+	my_open_1_arg.my_access_flag = ma;
+
+	result_1 = my_open_1(&my_open_1_arg, clnt);
+	if (result_1 == (my_open_creat_results *) NULL) {
+		clnt_perror (clnt, "open call failed");
+	} else if (result_1->status == -1) {
+		errno = result_1->my_open_creat_results_u.my_errno;
+		perror("--custom open error--");
+	} else {
+		printf("OPEN DONE, fd = %d\n", result_1->my_open_creat_results_u.fd);
+		return result_1->my_open_creat_results_u.fd;
+	}
+	return -1;
+}
+
+int _my_creat(CLIENT* clnt) {
+
+}
+
+int _my_read(CLIENT* clnt, int f, int c) {
+	my_read_results  *result_3;
+	my_read_params  my_read_1_arg;
+
+	my_read_1_arg.fd = f;
+	my_read_1_arg.count = c;
+
+	result_3 = my_read_1(&my_read_1_arg, clnt);
+	if (result_3 == (my_read_results *) NULL) {
+		clnt_perror (clnt, "read call failed");
+	} else if (result_3->status == -1) {
+		errno = result_3->my_read_results_u.my_errno;
+		perror("--custom read error--");
+	} else {
+		printf("READ DONE: %s\n", result_3->my_read_results_u.buf);
+		return 0;
+	}
+	return -1;
+}
+int _my_write(CLIENT* clnt, int f, char* b) {
+	my_write_results  *result_4;
+	my_write_params  my_write_1_arg;
+
+	my_write_1_arg.fd = f;
+	my_write_1_arg.buf = b;
+	my_write_1_arg.buf_size = strlen(my_write_1_arg.buf);
+
+	result_4 = my_write_1(&my_write_1_arg, clnt);
+	if (result_4 == (my_write_results *) NULL) {
+		clnt_perror (clnt, "write call failed");
+	} else if (result_4->status == -1) {
+		errno = result_4->my_write_results_u.my_errno;
+		perror("--custom write error--");
+	} else {
+		printf("WRITE DONE, %d B\n", result_4->my_write_results_u.bytes_written);
+		return 0;
+	}
+	return -1;
+}
+int _my_lseek(CLIENT* clnt, int f, int o, my_whence mw) {
+	my_lseek_results  *result_5;
+	my_lseek_params  my_lseek_1_arg;
+
+	my_lseek_1_arg.fd = f;
+	my_lseek_1_arg.offset = o;
+	my_lseek_1_arg.my_whence_flag = mw;
+
+	result_5 = my_lseek_1(&my_lseek_1_arg, clnt);
+	if (result_5 == (my_lseek_results *) NULL) {
+		clnt_perror (clnt, "lseek call failed");
+	} else if (result_5->status == -1) {
+		errno = result_5->my_lseek_results_u.my_errno;
+		perror("--custom lseek error--");
+	} else {
+		printf("LSEEK DONE, current location: %d\n", result_5->my_lseek_results_u.offset_location);
+		return result_5->my_lseek_results_u.offset_location;
+	}
+	return -1;
+}
+int _my_close(CLIENT* clnt, int f) {
+	my_close_results  *result_6;
+	my_close_params  my_close_1_arg;
+
+	my_close_1_arg.fd = f;
+
+	result_6 = my_close_1(&my_close_1_arg, clnt);
+	if (result_6 == (my_close_results *) NULL) {
+		clnt_perror (clnt, "close call failed");
+	} else if (result_6->status == -1) {
+		errno = result_6->my_close_results_u.my_errno;
+		perror("--custom close error--");
+	} else {
+		printf("CLOSE DONE\n");
+		return 0;
+	}
+	return -1;
+}
+
 void
 my_nfs_1(char *host)
 {
 	CLIENT *clnt;
-	my_open_creat_results  *result_1;
-	my_open_params  my_open_1_arg;
+	
 	my_open_creat_results  *result_2;
 	my_creat_params  my_creat_1_arg;
-	my_read_results  *result_3;
-	my_read_params  my_read_1_arg;
-	my_write_results  *result_4;
-	my_write_params  my_write_1_arg;
-	my_lseek_results  *result_5;
-	my_lseek_params  my_lseek_1_arg;
-	my_close_results  *result_6;
-	my_close_params  my_close_1_arg;
+	
+	
+	
+	
 
 #ifndef	DEBUG
 	clnt = clnt_create (host, MY_NFS, MY_NFS_V1, "udp");
@@ -33,22 +130,11 @@ my_nfs_1(char *host)
 	}
 #endif	/* DEBUG */
 
+int fddd;
+	
+	fddd = _my_open(clnt, "test2.txt", _O_RDWR);
 
-	//my_open_1_arg.path = "/home/filipmqv/npr/2-rpc/test2.txt";
-	my_open_1_arg.path = "/tmp/test_rpc.txt";
-	my_open_1_arg.my_access_flag = _O_RDONLY;
-	result_1 = my_open_1(&my_open_1_arg, clnt);
-	if (result_1 == (my_open_creat_results *) NULL) {
-		clnt_perror (clnt, "open call failed");
-	} else if (result_1->status == -1) {
-		errno = result_1->my_open_creat_results_u.my_errno;
-		perror("--custom open error--");
-	} else {
-		printf("%d\n", result_1->my_open_creat_results_u.fd);
-	}
-
-
-	my_creat_1_arg.path = "adasd";
+	my_creat_1_arg.path = "test3.txt";
 	result_2 = my_creat_1(&my_creat_1_arg, clnt);
 	if (result_2 == (my_open_creat_results *) NULL) {
 		clnt_perror (clnt, "creat call failed");
@@ -56,38 +142,23 @@ my_nfs_1(char *host)
 		errno = result_2->my_open_creat_results_u.my_errno;
 		perror("--custom creat error--");
 	} else {
-		printf("%d\n", result_2->my_open_creat_results_u.fd);
+		printf("fd = %d\n", result_2->my_open_creat_results_u.fd);
 	}
 
 
-	result_3 = my_read_1(&my_read_1_arg, clnt);
-	if (result_3 == (my_read_results *) NULL) {
-		clnt_perror (clnt, "read call failed");
-	} else if (result_3->status == -1) {
-		errno = result_3->my_read_results_u.my_errno;
-		perror("--custom read error--");
-	} else {
-		printf("%s\n", result_3->my_read_results_u.buf);
-	}
+	int mr = _my_read(clnt, fddd, 25);
 
 
-	my_write_1_arg.buf = "adasdasdasdasd";
-	result_4 = my_write_1(&my_write_1_arg, clnt);
-	if (result_4 == (my_write_results *) NULL) {
-		clnt_perror (clnt, "write call failed");
-	}
+	int mw = _my_write(clnt, fddd, "qwe+");
 
+	int ml = _my_lseek(clnt, fddd, 2, _SEEK_SET);
 
-	result_5 = my_lseek_1(&my_lseek_1_arg, clnt);
-	if (result_5 == (my_lseek_results *) NULL) {
-		clnt_perror (clnt, "lseek call failed");
-	}
+	int mr2 = _my_read(clnt, fddd, 3);
 
-	my_close_1_arg.fd = 6;
-	result_6 = my_close_1(&my_close_1_arg, clnt);
-	if (result_6 == (my_close_results *) NULL) {
-		clnt_perror (clnt, "close call failed");
-	}
+	int mc = _my_close(clnt, fddd);
+	
+
+	
 
 
 #ifndef	DEBUG
