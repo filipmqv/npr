@@ -30,6 +30,7 @@ MyLock<T>::MyLock(T input) {
     data = input;
     for(int i = 0; i < NUM_OF_COND_VARS; i++)
         waitSignal[i] = PTHREAD_COND_INITIALIZER;
+    printerCount = 0;
 
     initThreadReceiver();
 }
@@ -160,7 +161,7 @@ void MyLock<T>::handleMsgPrintReceived(int dataSize) {
     char rcvdData[dataSize];
     MPI_Recv(&rcvdData, dataSize, MPI_CHAR, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     rcvdData[dataSize-1] = '\0';
-    std::cout << rcvdData << std::endl;
+    std::cout << printerCount++ << " " << rcvdData << std::endl;
 }
 
 template <class T>
@@ -168,7 +169,9 @@ void MyLock<T>::handleMsgSignalReceived() {
     MPI_Status status;
     int rcvdId;
     MPI_Recv(&rcvdId, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+    pthread_mutex_lock(&m);
     signalCame = true;
+    pthread_mutex_unlock(&m);
     pthread_cond_signal(&waitSignal[rcvdId]);
 }
 
@@ -276,9 +279,11 @@ void MyLock<T>::wait(int id) {
     sendToPrinter("before release");
     release();
     pthread_mutex_lock(&m);
-    if(!signalCame) { // if allowed == true -- signal was sent before waiting for it
+    if(!signalCame) { // if signalCame == true -- signal was sent before waiting for it
         sendToPrinter("waiting");
         pthread_cond_wait(&waitSignal[id], &m);
+    } else {
+        sendToPrinter("signal came earlier");
     }
     signalCame = false;
     sendToPrinter("awaken");

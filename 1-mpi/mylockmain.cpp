@@ -120,9 +120,9 @@ void producerLoop() {
         ml->acquire();
         //printf("(%d) prod acquired \n", rankMain);
         while (ml->data.bufUsage == 1) {
-            //printf("(%d) prod before wait \n", rankMain);
+            printf("(%d) prod before wait \n", rankMain);
             ml->wait(0);
-            //printf("(%d) prod after wait \n", rankMain);
+            printf("(%d) prod after wait \n", rankMain);
         }
         ml->data.bufSingle++;
         ml->data.bufUsage++;
@@ -132,7 +132,7 @@ void producerLoop() {
         ml->signal(0);
         ml->release();
         //ml->signal(0);
-        usleep(100000 * (rand()%10));
+        usleep(300000 * (rand()%10));
     }
 }
 
@@ -161,7 +161,7 @@ void consumerLoop() {
         ml->signal(0);
         ml->release();
         //ml->signal(0);
-        usleep(100000 * (rand()%10));
+        usleep(300000 * (rand()%10));
     }
 }
 

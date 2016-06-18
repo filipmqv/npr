@@ -8,7 +8,7 @@
 template<class T>
 class MyLock {
 private:
-	int worldSize, rank;
+	int worldSize, rank, printerCount;
 	long timestampGlobal;
 	bool isRequesting, allowed, signalCame; //allowed - set before signal in case signal goes before wait
 	std::set<int> acquireReplysRanks; // collect unique ranks which replied
