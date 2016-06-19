@@ -20,30 +20,33 @@ struct my_creat_params {
 };
 
 struct my_read_params {
-	int fd;
+	string path<>;
+	int offset;
 	int count;
 };
 
 struct my_write_params {
-	int fd;
+	string path<>;
+	int offset;
 	string buf<>;
 	int buf_size;
 };
 
 struct my_lseek_params {
-	int fd;
+	string path<>;
 	int offset;
+	int offset_to_set;
 	my_whence my_whence_flag;
 };
 
 struct my_close_params {
-	int fd;
+	string path<>;
 };
 
 
 union my_open_creat_results switch (int status) {
 	case -1: int my_errno;
-	default: int fd;
+	default: int success;
 };
 
 union my_read_results switch (int status) {

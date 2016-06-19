@@ -28,15 +28,17 @@ my_open_1_svc(my_open_params *argp, struct svc_req *rqstp)
 			break;
 		case _O_RDWR: ac = O_RDWR;
 			break;
-		default: ac = O_RDONLY;
-			break;
+		default: result.status = -1;
+			result.my_open_creat_results_u.my_errno = EACCES;
+			return &result;
 	}
 	result.status = open(argp->path, ac);
 	if (result.status == -1) {
 		result.my_open_creat_results_u.my_errno = errno;
 	} else {
-		result.my_open_creat_results_u.fd = result.status;
+		result.my_open_creat_results_u.success = result.status;
 	}
+	close(result.status);
 
 	return &result;
 }
@@ -52,8 +54,9 @@ my_creat_1_svc(my_creat_params *argp, struct svc_req *rqstp)
 	if (result.status == -1) {
 		result.my_open_creat_results_u.my_errno = errno;
 	} else {
-		result.my_open_creat_results_u.fd = result.status;
+		result.my_open_creat_results_u.success = result.status;
 	}
+	close(result.status);
 
 	return &result;
 }
@@ -63,15 +66,30 @@ my_read_1_svc(my_read_params *argp, struct svc_req *rqstp)
 {
 	static my_read_results  result;
 
-	printf("read %d count %d\n", argp->fd, argp->count);
+	printf("read %s count %d\n", argp->path, argp->count);
+
+	int fd = open(argp->path, O_RDONLY);
+	if (fd == -1) {
+		result.status = -1;
+		result.my_read_results_u.my_errno = errno;
+		return &result;
+	}
+
+	int lseek_status = lseek(fd, argp->offset, SEEK_SET);
+	if (lseek_status == -1) {
+		result.status = -1;
+		result.my_read_results_u.my_errno = errno;
+		return &result;
+	}
 
 	result.my_read_results_u.buf = (char *)malloc(argp->count);
-	result.status = read(argp->fd, result.my_read_results_u.buf, argp->count);
+	result.status = read(fd, result.my_read_results_u.buf, argp->count);
 	if (result.status == -1) {
 		result.my_read_results_u.my_errno = errno;
 	} else {
 		result.my_read_results_u.buf[result.status] = '\0';
 	}
+	close(fd);
 
 	return &result;
 }
@@ -81,13 +99,29 @@ my_write_1_svc(my_write_params *argp, struct svc_req *rqstp)
 {
 	static my_write_results  result;
 
-	printf("write %d %s\n", argp->fd, argp->buf);
-	result.status = write(argp->fd, argp->buf, argp->buf_size);
+	printf("write %s %s\n", argp->path, argp->buf);
+
+	int fd = open(argp->path, O_WRONLY);
+	if (fd == -1) {
+		result.status = -1;
+		result.my_write_results_u.my_errno = errno;
+		return &result;
+	}
+
+	int lseek_status = lseek(fd, argp->offset, SEEK_SET);
+	if (lseek_status == -1) {
+		result.status = -1;
+		result.my_write_results_u.my_errno = errno;
+		return &result;
+	}
+
+	result.status = write(fd, argp->buf, argp->buf_size);
 	if (result.status == -1) {
 		result.my_write_results_u.my_errno = errno;
 	} else {
 		result.my_write_results_u.bytes_written = result.status;
 	}
+	close(fd);
 
 	return &result;
 }
@@ -97,7 +131,21 @@ my_lseek_1_svc(my_lseek_params *argp, struct svc_req *rqstp)
 {
 	static my_lseek_results  result;
 
-	printf("lseek %d\n", argp->fd);
+	int fd = open(argp->path, O_WRONLY);
+	if (fd == -1) {
+		result.status = -1;
+		result.my_lseek_results_u.my_errno = errno;
+		return &result;
+	}
+
+	int lseek_status = lseek(fd, argp->offset, SEEK_SET);
+	if (lseek_status == -1) {
+		result.status = -1;
+		result.my_lseek_results_u.my_errno = errno;
+		return &result;
+	}
+
+	printf("lseek %s\n", argp->path);
 	int wh;
 	switch (argp->my_whence_flag) {
 		case _SEEK_SET: wh = SEEK_SET;
@@ -110,12 +158,13 @@ my_lseek_1_svc(my_lseek_params *argp, struct svc_req *rqstp)
 			break;
 	}
 
-	result.status = (int) lseek(argp->fd, argp->offset, wh);
+	result.status = lseek(fd, argp->offset_to_set, wh);
 	if (result.status == -1) {
 		result.my_lseek_results_u.my_errno = errno;
 	} else {
 		result.my_lseek_results_u.offset_location = result.status;
 	}
+	close(fd);
 
 	return &result;
 }
@@ -125,13 +174,13 @@ my_close_1_svc(my_close_params *argp, struct svc_req *rqstp)
 {
 	static my_close_results  result;
 
-	printf("close %d\n", argp->fd);
+	/*printf("close %d\n", argp->fd);
 	result.status = close(argp->fd);
 	if (result.status == -1) {
 		result.my_close_results_u.my_errno = errno;
 	} else {
 		result.my_close_results_u.success = 0;
-	}
+	}*/
 
 	return &result;
 }

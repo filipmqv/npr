@@ -52,7 +52,9 @@ xdr_my_read_params (XDR *xdrs, my_read_params *objp)
 {
 	register int32_t *buf;
 
-	 if (!xdr_int (xdrs, &objp->fd))
+	 if (!xdr_string (xdrs, &objp->path, ~0))
+		 return FALSE;
+	 if (!xdr_int (xdrs, &objp->offset))
 		 return FALSE;
 	 if (!xdr_int (xdrs, &objp->count))
 		 return FALSE;
@@ -64,7 +66,9 @@ xdr_my_write_params (XDR *xdrs, my_write_params *objp)
 {
 	register int32_t *buf;
 
-	 if (!xdr_int (xdrs, &objp->fd))
+	 if (!xdr_string (xdrs, &objp->path, ~0))
+		 return FALSE;
+	 if (!xdr_int (xdrs, &objp->offset))
 		 return FALSE;
 	 if (!xdr_string (xdrs, &objp->buf, ~0))
 		 return FALSE;
@@ -78,9 +82,11 @@ xdr_my_lseek_params (XDR *xdrs, my_lseek_params *objp)
 {
 	register int32_t *buf;
 
-	 if (!xdr_int (xdrs, &objp->fd))
+	 if (!xdr_string (xdrs, &objp->path, ~0))
 		 return FALSE;
 	 if (!xdr_int (xdrs, &objp->offset))
+		 return FALSE;
+	 if (!xdr_int (xdrs, &objp->offset_to_set))
 		 return FALSE;
 	 if (!xdr_my_whence (xdrs, &objp->my_whence_flag))
 		 return FALSE;
@@ -92,7 +98,7 @@ xdr_my_close_params (XDR *xdrs, my_close_params *objp)
 {
 	register int32_t *buf;
 
-	 if (!xdr_int (xdrs, &objp->fd))
+	 if (!xdr_string (xdrs, &objp->path, ~0))
 		 return FALSE;
 	return TRUE;
 }
@@ -110,7 +116,7 @@ xdr_my_open_creat_results (XDR *xdrs, my_open_creat_results *objp)
 			 return FALSE;
 		break;
 	default:
-		 if (!xdr_int (xdrs, &objp->my_open_creat_results_u.fd))
+		 if (!xdr_int (xdrs, &objp->my_open_creat_results_u.success))
 			 return FALSE;
 		break;
 	}

@@ -40,27 +40,30 @@ struct my_creat_params {
 typedef struct my_creat_params my_creat_params;
 
 struct my_read_params {
-	int fd;
+	char *path;
+	int offset;
 	int count;
 };
 typedef struct my_read_params my_read_params;
 
 struct my_write_params {
-	int fd;
+	char *path;
+	int offset;
 	char *buf;
 	int buf_size;
 };
 typedef struct my_write_params my_write_params;
 
 struct my_lseek_params {
-	int fd;
+	char *path;
 	int offset;
+	int offset_to_set;
 	my_whence my_whence_flag;
 };
 typedef struct my_lseek_params my_lseek_params;
 
 struct my_close_params {
-	int fd;
+	char *path;
 };
 typedef struct my_close_params my_close_params;
 
@@ -68,7 +71,7 @@ struct my_open_creat_results {
 	int status;
 	union {
 		int my_errno;
-		int fd;
+		int success;
 	} my_open_creat_results_u;
 };
 typedef struct my_open_creat_results my_open_creat_results;
