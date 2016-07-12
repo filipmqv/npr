@@ -12,7 +12,17 @@ sudo ./mynfs_server
 
 ./mynfs_client localhost open path access_flag	-- O_RDONLY O_WRONLY O_RDWR
 ./mynfs_client localhost creat path
-./mynfs_client localhost read fd count
-./mynfs_client localhost write fd text
-./mynfs_client localhost lseek fd offset whence_flag  -- SEEK_SET SEEK_CUR SEEK_END
-./mynfs_client localhost close fd
+./mynfs_client localhost read path count
+./mynfs_client localhost write path text
+./mynfs_client localhost lseek path offset whence_flag  -- SEEK_SET SEEK_CUR SEEK_END
+./mynfs_client localhost close path
+
+open - testuje czy plik da się otworzyć, zwraca 0- ok, -1- nie da się
+creat - tworzy nowy plik, zwraca 0-ok, -1- błąd
+read - odczytuje 
+write - zapisuje bufor od miejsca w którym obecnie jest kursor
+lseek - przesuwa kursor
+close - zamyka program klienta
+
+otwarcie programu klienta -> open lub creat
+wybranie opcji- podaj ścieżkę i tryb
