@@ -1,0 +1,30 @@
+11:04:14.236 INFO  [main] - Server accepting connections on tcp://127.0.1.1:3035/
+11:04:14.294 INFO  [main] - JNDI service accepting connections on tcp://127.0.1.1:3035/
+11:04:14.297 INFO  [main] - Admin service accepting connections on tcp://127.0.1.1:3035/
+11:04:14.957 INFO  [main] - Server accepting connections on rmi://127.0.1.1:1099/
+11:04:14.958 INFO  [main] - JNDI service accepting connections on rmi://127.0.1.1:1099/
+11:04:14.959 INFO  [main] - Admin service accepting connections on rmi://127.0.1.1:1099/
+12:02:57.238 INFO  [main] - Server accepting connections on tcp://127.0.1.1:3035/
+12:02:57.253 INFO  [main] - JNDI service accepting connections on tcp://127.0.1.1:3035/
+12:02:57.255 INFO  [main] - Admin service accepting connections on tcp://127.0.1.1:3035/
+12:02:57.285 INFO  [main] - Server accepting connections on rmi://127.0.1.1:1099/
+12:02:57.285 INFO  [main] - JNDI service accepting connections on rmi://127.0.1.1:1099/
+12:02:57.285 INFO  [main] - Admin service accepting connections on rmi://127.0.1.1:1099/
+12:09:39.187 INFO  [main] - Server accepting connections on tcp://127.0.1.1:3035/
+12:09:39.189 INFO  [main] - JNDI service accepting connections on tcp://127.0.1.1:3035/
+12:09:39.190 INFO  [main] - Admin service accepting connections on tcp://127.0.1.1:3035/
+12:09:39.221 INFO  [main] - Server accepting connections on rmi://127.0.1.1:1099/
+12:09:39.221 INFO  [main] - JNDI service accepting connections on rmi://127.0.1.1:1099/
+12:09:39.221 INFO  [main] - Admin service accepting connections on rmi://127.0.1.1:1099/
+13:22:21.629 INFO  [main] - Server accepting connections on tcp://127.0.1.1:3035/
+13:22:21.679 INFO  [main] - JNDI service accepting connections on tcp://127.0.1.1:3035/
+13:22:21.681 INFO  [main] - Admin service accepting connections on tcp://127.0.1.1:3035/
+13:22:22.007 INFO  [main] - Server accepting connections on rmi://127.0.1.1:1099/
+13:22:22.007 INFO  [main] - JNDI service accepting connections on rmi://127.0.1.1:1099/
+13:22:22.007 INFO  [main] - Admin service accepting connections on rmi://127.0.1.1:1099/
+13:57:07.832 INFO  [main] - Server accepting connections on tcp://127.0.1.1:3035/
+13:57:07.835 INFO  [main] - JNDI service accepting connections on tcp://127.0.1.1:3035/
+13:57:07.837 INFO  [main] - Admin service accepting connections on tcp://127.0.1.1:3035/
+13:57:07.874 INFO  [main] - Server accepting connections on rmi://127.0.1.1:1099/
+13:57:07.874 INFO  [main] - JNDI service accepting connections on rmi://127.0.1.1:1099/
+13:57:07.875 INFO  [main] - Admin service accepting connections on rmi://127.0.1.1:1099/

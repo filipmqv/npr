@@ -1,0 +1,14 @@
+OpenJMS http://openjms.sourceforge.net/
+
+http://openjms.sourceforge.net/gettingstarted.html
+
+uruchomienie serwera wiadomości JMS:
+cd $OPENJMS_HOME/bin
+./startup.sh
+
+twitter
+użytkownik ma swój kanał na który wypisuje wiadomości
+użytkownik może też zapisać się na kanały innych (info o dostępnych kanałach z admina)
+biblioteka asynchronicznie pobiera tweety z zasubskrybowanych kanałów
+menu:
+napisz tweet, odczytaj ostatnie tweety, zasubskrybuj (pokaż listę, wpisz kogo subskrybować, kogo przestać)

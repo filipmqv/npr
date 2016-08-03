@@ -1,0 +1,6 @@
+----------------------------------------------------------------
+2016-08-03 11:57:06.875 GMT:
+ Booting Derby version The Apache Software Foundation - Apache Derby - 10.1.1.0 - (208786): instance c013800d-0156-5043-a928-ffffbbaad343
+on database directory /home/filipmqv/npr/3-jms/openjms-0.7.7-beta-1/db/openjmsdb 
+
+Database Class Loader started - derby.database.classpath=''
