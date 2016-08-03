@@ -145,6 +145,11 @@ public class Twitter {
                     }
                 });
                 System.out.println("  Subscribed to " + name);
+            } else {
+                if (!topicExists(name))
+                    System.out.println("  NOT subscribed (no such channel)");
+                else
+                    System.out.println("  You are already subscribing this channel");
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -161,6 +166,11 @@ public class Twitter {
                 receiver.setMessageListener(null);
                 subscribedChannelsMap.remove(name);
                 System.out.println("  Unsubscribed from " + name);
+            } else {
+                if (!topicExists(name))
+                    System.out.println("  No such channel");
+                else
+                    System.out.println("  You weren't subscribing this channel");
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -207,6 +217,7 @@ public class Twitter {
 
             boolean working = true;
             while (working) {
+                boolean showPostActionInfo = true;
                 printMenu(myTopic.getTopicName());
                 String choice = br.readLine();
                 switch (choice) {
@@ -232,11 +243,14 @@ public class Twitter {
                         working = false;
                         System.out.println("Exiting...");
                         break;
+                    case "":
+                        showPostActionInfo = false;
+                        break;
                     default:
                         System.out.println("Unknown command");
                         break;
                 }
-                if (working) {
+                if (working && showPostActionInfo) {
                     System.out.println("Hit [Enter] to get back to main menu");
                     br.readLine();
                 }
